@@ -20,19 +20,6 @@ cd vaulter
 curl -sL https://raw.githubusercontent.com/usevaulter/vaulter/main/install-remote.sh | bash
 ```
 
-### Homebrew (macOS)
-
-```bash
-brew tap usevaulter/tap
-brew install vaulter
-```
-
-### apt (Linux)
-
-```bash
-sudo apt install vaulter
-```
-
 ## Quick Start
 
 ```bash
