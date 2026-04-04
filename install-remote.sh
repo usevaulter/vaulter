@@ -45,3 +45,89 @@ rm -rf "${TMP_DIR}"
 
 echo "vaulter ${VERSION} installed to ${INSTALL_DIR}/vaulter"
 vaulter init 2>/dev/null || true
+
+# Detect shell and install hook
+SHELL_NAME="$(basename "${SHELL}")"
+
+ZSH_HOOK='
+# vaulter shell integration
+autoload -U add-zsh-hook
+
+vaulter() {
+  case "$1" in
+    use|switch)
+      command vaulter "$@" && eval "$(command vaulter export)"
+      ;;
+    *)
+      command vaulter "$@"
+      ;;
+  esac
+}
+
+_vaulter_chpwd() { eval "$(command vaulter export 2>/dev/null)"; }
+add-zsh-hook chpwd _vaulter_chpwd
+_vaulter_chpwd'
+
+BASH_HOOK='
+# vaulter shell integration
+vaulter() {
+  case "$1" in
+    use|switch)
+      command vaulter "$@" && eval "$(command vaulter export)"
+      ;;
+    *)
+      command vaulter "$@"
+      ;;
+  esac
+}
+
+_vaulter_chpwd() { eval "$(command vaulter export 2>/dev/null)"; }
+if [[ -n "${PROMPT_COMMAND}" ]]; then
+  PROMPT_COMMAND="_vaulter_chpwd;${PROMPT_COMMAND}"
+else
+  PROMPT_COMMAND="_vaulter_chpwd"
+fi
+_vaulter_chpwd'
+
+FISH_HOOK='
+# vaulter shell integration
+function vaulter
+  switch $argv[1]
+    case use switch
+      command vaulter $argv; and eval (command vaulter export 2>/dev/null)
+    case "*"
+      command vaulter $argv
+  end
+end
+
+function _vaulter_chpwd --on-variable PWD
+  eval (command vaulter export 2>/dev/null)
+end
+_vaulter_chpwd'
+
+case "${SHELL_NAME}" in
+  zsh)
+    RC_FILE="${HOME}/.zshrc"
+    HOOK="${ZSH_HOOK}"
+    ;;
+  bash)
+    RC_FILE="${HOME}/.bashrc"
+    HOOK="${BASH_HOOK}"
+    ;;
+  fish)
+    RC_FILE="${HOME}/.config/fish/conf.d/vaulter.fish"
+    mkdir -p "$(dirname "${RC_FILE}")"
+    HOOK="${FISH_HOOK}"
+    ;;
+  *)
+    echo "Shell '${SHELL_NAME}' not supported for auto-hook. Add vaulter export to your shell config manually."
+    exit 0
+    ;;
+esac
+
+if ! grep -q "vaulter shell integration" "${RC_FILE}" 2>/dev/null; then
+  echo "${HOOK}" >> "${RC_FILE}"
+  echo "Shell hook added to ${RC_FILE}. Restart your shell or run: source ${RC_FILE}"
+else
+  echo "Shell hook already present in ${RC_FILE}"
+fi
