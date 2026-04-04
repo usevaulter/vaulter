@@ -216,14 +216,6 @@ tests/
   test_db.rs    -- Integration tests
 ```
 
-### Guidelines
-
-- Keep it simple. This is a CLI tool, not a framework.
-- All DB logic goes in `db.rs`, command logic in `commands.rs`.
-- Add tests for new features in `tests/test_db.rs`.
-- Schema changes go in new migration files (`migrations/002_*.sql`, etc.).
-- Run `cargo test -- --test-threads=1` before submitting a PR.
-
 ## License
 
 MIT
