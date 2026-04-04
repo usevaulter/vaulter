@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO="usevaulter/vaulter"
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR="${HOME}/.local/bin"
 
 # Detect platform
 OS="$(uname -s)"
@@ -37,8 +37,9 @@ curl -sL "${URL}.sha256" -o "${TMP_DIR}/${ARTIFACT}.tar.gz.sha256"
 (cd "${TMP_DIR}" && shasum -a 256 -c "${ARTIFACT}.tar.gz.sha256")
 
 echo "Installing to ${INSTALL_DIR}..."
+mkdir -p "${INSTALL_DIR}"
 tar -xzf "${TMP_DIR}/${ARTIFACT}.tar.gz" -C "${TMP_DIR}"
-sudo install -m 755 "${TMP_DIR}/vaulter" "${INSTALL_DIR}/vaulter"
+install -m 755 "${TMP_DIR}/vaulter" "${INSTALL_DIR}/vaulter"
 
 rm -rf "${TMP_DIR}"
 
