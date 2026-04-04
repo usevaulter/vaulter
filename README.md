@@ -178,6 +178,55 @@ _vaulter_chpwd
 
 All data is stored locally in a SQLite database at `~/.vaulter/vaulter.db` (or `$VAULTER_HOME/vaulter.db`). Values are stored in plaintext. The database is auto-initialized on first use. Schema migrations are handled automatically via sqlx.
 
+## Roadmap
+
+### Core
+- [x] `vaulter init` — auto-initialize on first use
+- [x] `vaulter create / list / delete` — vault management
+- [x] `vaulter use` — switch active vault per directory
+- [x] `vaulter set / get / unset` — variable CRUD
+- [x] `vaulter set KEY=val KEY2=val2` — multi-set support
+- [x] `vaulter show` — display vault variables
+- [x] `vaulter import` — import from `.env` files
+- [x] `vaulter export` — export as shell statements
+- [x] `vaulter switch` — switch vault and export for shell eval
+- [x] `vaulter with` — run commands with vault env injected
+- [x] Per-directory active vault
+- [x] `VAULTER_HOME` override
+- [x] Shell integration (zsh/bash/fish auto-hook)
+- [x] SQLite with sqlx migrations
+- [x] Friendly error messages
+- [x] GitHub Actions CI + release pipeline
+- [x] One-liner install script
+
+### Phase 1 — Versioning
+- [ ] `vaulter log` — history of changes per vault
+- [ ] `vaulter diff` — diff between vaults or versions
+- [ ] `vaulter rollback` — restore a previous state
+- [ ] Snapshot tagging
+- [ ] Autocompletion
+
+### Phase 2 — Clone, Merge & Multi-format
+- [ ] `vaulter clone <source> <dest>` — duplicate a vault
+- [ ] `vaulter merge <source> --into <dest>` — merge with conflict detection
+- [ ] `vaulter rename <old> <new>`
+- [ ] `vaulter export --format json/toml/yaml`
+
+### Phase 3 — Encryption
+- [ ] `vaulter set KEY --secret` — prompt without echo
+- [ ] AES-256-GCM encryption at rest
+- [ ] Master password with argon2 key derivation
+
+### Phase 4 — Remote Sync
+- [ ] `vaulter login` — authenticate
+- [ ] Turso-backed remote sync across machines
+- [ ] Team-shared vaults
+- [ ] End-to-end encrypted sync
+
+### Phase 5 — TUI
+- [ ] Interactive terminal UI (ratatui)
+- [ ] Browse, edit, and switch vaults visually
+
 ## Contributing
 
 ### Prerequisites
@@ -200,21 +249,6 @@ cargo test -- --test-threads=1
 
 Tests must run single-threaded because they use `VAULTER_HOME` for isolation.
 
-### Project Structure
-
-```
-src/
-  main.rs       -- Entrypoint
-  cli.rs        -- CLI definition (clap derive)
-  commands.rs   -- Command handlers
-  db.rs         -- SQLite operations (sqlx)
-  errors.rs     -- Error types
-  lib.rs        -- Library exports
-migrations/
-  001_init.sql  -- Initial schema
-tests/
-  test_db.rs    -- Integration tests
-```
 
 ## License
 
