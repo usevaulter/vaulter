@@ -1,0 +1,209 @@
+use std::env;
+use std::fs;
+use std::process::Command;
+
+use crate::cli::Commands;
+use crate::db;
+use crate::errors::Result;
+
+fn current_dir() -> Result<String> {
+    env::current_dir()
+        .map(|d| d.to_string_lossy().into_owned())
+        .map_err(|_| crate::errors::VaulterError::NoCwd)
+}
+
+async fn resolve_vault(explicit: &Option<String>, pool: &sqlx::sqlite::SqlitePool) -> Result<String> {
+    match explicit {
+        Some(name) => Ok(name.clone()),
+        None => db::get_active_vault(pool, &current_dir()?).await,
+    }
+}
+
+/// Parse set args: either ["KEY", "VALUE"] or ["KEY=VAL", "KEY2=VAL2", ...]
+fn parse_set_args(args: &[String]) -> Result<Vec<(String, String)>> {
+    if args.is_empty() {
+        return Err(crate::errors::VaulterError::InvalidSetArgs);
+    }
+
+    if args[0].contains('=') {
+        let mut pairs = Vec::new();
+        for arg in args {
+            let (key, value) = arg
+                .split_once('=')
+                .ok_or(crate::errors::VaulterError::InvalidSetArgs)?;
+            if key.is_empty() {
+                return Err(crate::errors::VaulterError::InvalidSetArgs);
+            }
+            pairs.push((key.to_string(), value.to_string()));
+        }
+        Ok(pairs)
+    } else if args.len() == 2 {
+        Ok(vec![(args[0].clone(), args[1].clone())])
+    } else {
+        Err(crate::errors::VaulterError::InvalidSetArgs)
+    }
+}
+
+/// Parse .env file content into key-value pairs
+pub fn parse_env(content: &str) -> Vec<(String, String)> {
+    content
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|l| l.strip_prefix("export ").unwrap_or(l))
+        .filter_map(|l| l.split_once('='))
+        .map(|(k, v)| {
+            (
+                k.trim().to_string(),
+                v.trim().trim_matches('"').trim_matches('\'').to_string(),
+            )
+        })
+        .collect()
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace("'", "'\\''"))
+}
+
+pub async fn run(cmd: Commands) -> Result<()> {
+    match cmd {
+        Commands::Init => {
+            db::init_db().await?;
+            println!("vaulter initialized at {}", db::vaulter_dir()?.display());
+        }
+
+        Commands::Create { name } => {
+            let pool = db::open_db().await?;
+            db::create_vault(&pool, &name).await?;
+            println!("vault '{name}' created");
+        }
+
+        Commands::List => {
+            let pool = db::open_db().await?;
+            let active = db::get_active_vault(&pool, &current_dir()?).await?;
+            let vaults = db::list_vaults(&pool).await?;
+            for (name, created_at) in vaults {
+                let marker = if name == active { " *" } else { "" };
+                println!("{name}{marker}  (created {created_at})");
+            }
+        }
+
+        Commands::Delete { name } => {
+            let pool = db::open_db().await?;
+            db::delete_vault(&pool, &name).await?;
+            println!("vault '{name}' deleted");
+        }
+
+        Commands::Use { vault } => {
+            let pool = db::open_db().await?;
+            let dir = current_dir()?;
+            db::set_active_vault(&pool, &dir, &vault).await?;
+            println!("switched to vault '{vault}' for {dir}");
+        }
+
+        Commands::Switch { name } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&name, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            db::set_active_vault(&pool, &current_dir()?, &vault_name).await?;
+            let vars = db::list_vars(&pool, vault_id).await?;
+            for (key, value) in vars {
+                println!("export {}={}", key, shell_quote(&value));
+            }
+        }
+
+        Commands::Set { args, vault } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            let pairs = parse_set_args(&args)?;
+            for (key, value) in &pairs {
+                db::set_var(&pool, vault_id, key, value).await?;
+                println!("{key}={value} (vault: {vault_name})");
+            }
+        }
+
+        Commands::Get { key, vault } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            match db::get_var(&pool, vault_id, &key).await? {
+                Some(val) => println!("{val}"),
+                None => {
+                    eprintln!("key '{key}' not found in vault '{vault_name}'");
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Show { vault } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            let vars = db::list_vars(&pool, vault_id).await?;
+            if vars.is_empty() {
+                println!("vault '{vault_name}' has no variables");
+            } else {
+                println!("vault: {vault_name}");
+                for (key, value) in vars {
+                    println!("  {key}={value}");
+                }
+            }
+        }
+
+        Commands::Unset { key, vault } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            db::delete_var(&pool, vault_id, &key).await?;
+            println!("unset '{key}' from vault '{vault_name}'");
+        }
+
+        Commands::Export { vault } => {
+            let pool = db::open_db().await?;
+            let vault_names = if vault.is_empty() {
+                vec![db::get_active_vault(&pool, &current_dir()?).await?]
+            } else {
+                vault
+            };
+            let vars = db::export_vars(&pool, &vault_names).await?;
+            for (key, value) in vars {
+                println!("export {}={}", key, shell_quote(&value));
+            }
+        }
+
+        Commands::Import { file, vault } => {
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            let content = fs::read_to_string(&file)?;
+            let pairs = parse_env(&content);
+            let mut count = 0;
+            for (key, value) in &pairs {
+                db::set_var(&pool, vault_id, key, value).await?;
+                count += 1;
+            }
+            println!("imported {count} variables into vault '{vault_name}' from {file}");
+        }
+
+        Commands::With { vault, cmd } => {
+            if cmd.is_empty() {
+                eprintln!("usage: vaulter with [vault] -- <command>");
+                std::process::exit(1);
+            }
+            let pool = db::open_db().await?;
+            let vault_name = resolve_vault(&vault, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            let vars = db::list_vars(&pool, vault_id).await?;
+
+            let status = Command::new(&cmd[0])
+                .args(&cmd[1..])
+                .envs(vars)
+                .status()?;
+
+            std::process::exit(status.code().unwrap_or(1));
+        }
+    }
+
+    Ok(())
+}
