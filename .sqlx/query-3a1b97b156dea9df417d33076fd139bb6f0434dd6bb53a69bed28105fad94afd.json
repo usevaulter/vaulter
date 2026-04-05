@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM dir_vaults WHERE vault_name = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "3a1b97b156dea9df417d33076fd139bb6f0434dd6bb53a69bed28105fad94afd"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO env_vars (vault_id, key, value) VALUES (?, ?, ?)\n         ON CONFLICT(vault_id, key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "19876a959d65009c634153d9066f75fae68592fc34ec2ab81b78ffba5eb58d20"
+}

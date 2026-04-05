@@ -18,13 +18,6 @@ Vaulter organizes env variables into **vaults** — named groups you can switch 
 - [x] `vaulter export` — export as shell statements
 - [x] `vaulter switch` — switch vault and export for shell eval
 - [x] `vaulter with` — run commands with vault env injected
-- [x] Per-directory active vault
-- [x] `VAULTER_HOME` override
-- [x] Shell integration (zsh/bash/fish auto-hook)
-- [x] SQLite with sqlx migrations
-- [x] Friendly error messages
-- [x] GitHub Actions CI + release pipeline
-- [x] One-liner install script
 
 ### Phase 1 — Versioning
 - [ ] `vaulter log` — history of changes per vault

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM env_vars WHERE vault_id = ? AND key = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7e2909b5303f17b66f82bc5d1026c22c7de95f5c287012d9f166501429944b50"
+}

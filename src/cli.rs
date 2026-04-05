@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "vaulter", about = "Environment variable manager")]
+#[command(name = "vaulter", version, about = "Environment variable manager")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -11,6 +11,9 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize vaulter
     Init,
+
+    /// Show debug information about vaulter installation
+    Debug,
 
     /// Create a new vault
     Create { name: String },

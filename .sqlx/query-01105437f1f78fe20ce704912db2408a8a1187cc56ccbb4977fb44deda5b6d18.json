@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO dir_vaults (dir, vault_name) VALUES (?, ?)\n         ON CONFLICT(dir) DO UPDATE SET vault_name = excluded.vault_name",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "01105437f1f78fe20ce704912db2408a8a1187cc56ccbb4977fb44deda5b6d18"
+}

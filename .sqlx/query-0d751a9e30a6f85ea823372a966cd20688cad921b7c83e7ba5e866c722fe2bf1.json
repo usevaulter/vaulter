@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT vault_name FROM dir_vaults WHERE dir = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "vault_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0d751a9e30a6f85ea823372a966cd20688cad921b7c83e7ba5e866c722fe2bf1"
+}

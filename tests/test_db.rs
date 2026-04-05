@@ -6,6 +6,7 @@ use sqlx::sqlite::SqlitePool;
 use vaulter::commands;
 use vaulter::db;
 use vaulter::errors::VaulterError;
+use vaulter::models::EnvVar;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -254,8 +255,8 @@ async fn test_list_vars() {
     assert_eq!(
         vars,
         vec![
-            ("A_KEY".to_string(), "aval".to_string()),
-            ("B_KEY".to_string(), "bval".to_string()),
+            EnvVar::new("A_KEY", "aval"),
+            EnvVar::new("B_KEY", "bval"),
         ]
     );
 }
@@ -310,8 +311,8 @@ async fn test_export_single_vault() {
     assert_eq!(
         vars,
         vec![
-            ("A".to_string(), "1".to_string()),
-            ("B".to_string(), "2".to_string()),
+            EnvVar::new("A", "1"),
+            EnvVar::new("B", "2"),
         ]
     );
 }
@@ -340,9 +341,9 @@ async fn test_export_multi_vault_deduplication() {
     assert_eq!(
         vars,
         vec![
-            ("ONLY_DEFAULT".to_string(), "yes".to_string()),
-            ("ONLY_OVER".to_string(), "yes".to_string()),
-            ("SHARED".to_string(), "over_val".to_string()),
+            EnvVar::new("ONLY_DEFAULT", "yes"),
+            EnvVar::new("ONLY_OVER", "yes"),
+            EnvVar::new("SHARED", "over_val"),
         ]
     );
 }
@@ -379,8 +380,8 @@ fn test_parse_env_basic() {
     assert_eq!(
         pairs,
         vec![
-            ("KEY".to_string(), "value".to_string()),
-            ("DB_HOST".to_string(), "localhost".to_string()),
+            EnvVar::new("KEY", "value"),
+            EnvVar::new("DB_HOST", "localhost"),
         ]
     );
 }
@@ -389,7 +390,7 @@ fn test_parse_env_basic() {
 fn test_parse_env_skips_comments_and_blanks() {
     let content = "# this is a comment\n\nKEY=value\n  # indented comment\n\n";
     let pairs = commands::parse_env(content);
-    assert_eq!(pairs, vec![("KEY".to_string(), "value".to_string())]);
+    assert_eq!(pairs, vec![EnvVar::new("KEY", "value")]);
 }
 
 #[test]
@@ -399,9 +400,9 @@ fn test_parse_env_strips_quotes() {
     assert_eq!(
         pairs,
         vec![
-            ("A".to_string(), "double quoted".to_string()),
-            ("B".to_string(), "single quoted".to_string()),
-            ("C".to_string(), "unquoted".to_string()),
+            EnvVar::new("A", "double quoted"),
+            EnvVar::new("B", "single quoted"),
+            EnvVar::new("C", "unquoted"),
         ]
     );
 }
@@ -413,9 +414,9 @@ fn test_parse_env_handles_export_prefix() {
     assert_eq!(
         pairs,
         vec![
-            ("API_KEY".to_string(), "secret".to_string()),
-            ("DB".to_string(), "postgres".to_string()),
-            ("PLAIN".to_string(), "val".to_string()),
+            EnvVar::new("API_KEY", "secret"),
+            EnvVar::new("DB", "postgres"),
+            EnvVar::new("PLAIN", "val"),
         ]
     );
 }
@@ -426,7 +427,7 @@ fn test_parse_env_value_with_equals() {
     let pairs = commands::parse_env(content);
     assert_eq!(
         pairs,
-        vec![("URL".to_string(), "postgres://user:pass@host/db?opt=1".to_string())]
+        vec![EnvVar::new("URL", "postgres://user:pass@host/db?opt=1")]
     );
 }
 
@@ -437,16 +438,16 @@ async fn test_import_writes_to_vault() {
 
     let vault_id = db::resolve_vault_id(&pool, "default").await.unwrap();
     let pairs = commands::parse_env("A=1\nB=2\n");
-    for (key, value) in &pairs {
-        db::set_var(&pool, vault_id, key, value).await.unwrap();
+    for var in &pairs {
+        db::set_var(&pool, vault_id, &var.key, &var.value).await.unwrap();
     }
 
     let vars = db::list_vars(&pool, vault_id).await.unwrap();
     assert_eq!(
         vars,
         vec![
-            ("A".to_string(), "1".to_string()),
-            ("B".to_string(), "2".to_string()),
+            EnvVar::new("A", "1"),
+            EnvVar::new("B", "2"),
         ]
     );
 }

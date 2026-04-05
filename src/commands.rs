@@ -5,6 +5,7 @@ use std::process::Command;
 use crate::cli::Commands;
 use crate::db;
 use crate::errors::Result;
+use crate::models::EnvVar;
 
 fn current_dir() -> Result<String> {
     env::current_dir()
@@ -20,7 +21,7 @@ async fn resolve_vault(explicit: &Option<String>, pool: &sqlx::sqlite::SqlitePoo
 }
 
 /// Parse set args: either ["KEY", "VALUE"] or ["KEY=VAL", "KEY2=VAL2", ...]
-fn parse_set_args(args: &[String]) -> Result<Vec<(String, String)>> {
+fn parse_set_args(args: &[String]) -> Result<Vec<EnvVar>> {
     if args.is_empty() {
         return Err(crate::errors::VaulterError::InvalidSetArgs);
     }
@@ -34,18 +35,18 @@ fn parse_set_args(args: &[String]) -> Result<Vec<(String, String)>> {
             if key.is_empty() {
                 return Err(crate::errors::VaulterError::InvalidSetArgs);
             }
-            pairs.push((key.to_string(), value.to_string()));
+            pairs.push(EnvVar::new(key, value));
         }
         Ok(pairs)
     } else if args.len() == 2 {
-        Ok(vec![(args[0].clone(), args[1].clone())])
+        Ok(vec![EnvVar::new(args[0].as_str(), args[1].as_str())])
     } else {
         Err(crate::errors::VaulterError::InvalidSetArgs)
     }
 }
 
 /// Parse .env file content into key-value pairs
-pub fn parse_env(content: &str) -> Vec<(String, String)> {
+pub fn parse_env(content: &str) -> Vec<EnvVar> {
     content
         .lines()
         .map(str::trim)
@@ -53,10 +54,7 @@ pub fn parse_env(content: &str) -> Vec<(String, String)> {
         .map(|l| l.strip_prefix("export ").unwrap_or(l))
         .filter_map(|l| l.split_once('='))
         .map(|(k, v)| {
-            (
-                k.trim().to_string(),
-                v.trim().trim_matches('"').trim_matches('\'').to_string(),
-            )
+            EnvVar::new(k.trim(), v.trim().trim_matches('"').trim_matches('\''))
         })
         .collect()
 }
@@ -70,6 +68,44 @@ pub async fn run(cmd: Commands) -> Result<()> {
         Commands::Init => {
             db::init_db().await?;
             println!("vaulter initialized at {}", db::vaulter_dir()?.display());
+        }
+
+        Commands::Debug => {
+            let dir = db::vaulter_dir()?;
+            let db_path = dir.join("vaulter.db");
+            let db_exists = db_path.exists();
+
+            println!("vaulter {}", env!("CARGO_PKG_VERSION"));
+            println!("  git sha:     {}", env!("VAULTER_GIT_SHA"));
+            println!("  build:       {}", if cfg!(debug_assertions) { "debug" } else { "release" });
+            println!("  target:      {}", std::env::consts::OS);
+            println!("  arch:        {}", std::env::consts::ARCH);
+            println!();
+            println!("paths:");
+            println!("  vaulter dir: {}", dir.display());
+            println!("  database:    {}", db_path.display());
+            println!("  VAULTER_HOME: {}", std::env::var("VAULTER_HOME").unwrap_or_else(|_| "(not set)".into()));
+            println!("  shell:       {}", std::env::var("SHELL").unwrap_or_else(|_| "(unknown)".into()));
+            println!();
+
+            if db_exists {
+                let meta = fs::metadata(&db_path)?;
+                println!("database:");
+                println!("  size:        {} bytes", meta.len());
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    println!("  perms:       {:o}", meta.permissions().mode() & 0o777);
+                }
+
+                let pool = db::open_db().await?;
+                let vaults = db::list_vaults(&pool).await?;
+                let active = db::get_active_vault(&pool, &current_dir()?).await?;
+                println!("  vaults:      {}", vaults.len());
+                println!("  active:      {} (for {})", active, current_dir()?);
+            } else {
+                println!("database: not initialized");
+            }
         }
 
         Commands::Create { name } => {
@@ -107,8 +143,8 @@ pub async fn run(cmd: Commands) -> Result<()> {
             let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
             db::set_active_vault(&pool, &current_dir()?, &vault_name).await?;
             let vars = db::list_vars(&pool, vault_id).await?;
-            for (key, value) in vars {
-                println!("export {}={}", key, shell_quote(&value));
+            for var in vars {
+                println!("export {}={}", var.key, shell_quote(&var.value));
             }
         }
 
@@ -117,9 +153,9 @@ pub async fn run(cmd: Commands) -> Result<()> {
             let vault_name = resolve_vault(&vault, &pool).await?;
             let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
             let pairs = parse_set_args(&args)?;
-            for (key, value) in &pairs {
-                db::set_var(&pool, vault_id, key, value).await?;
-                println!("{key}={value} (vault: {vault_name})");
+            for var in &pairs {
+                db::set_var(&pool, vault_id, &var.key, &var.value).await?;
+                println!("{}={} (vault: {vault_name})", var.key, var.value);
             }
         }
 
@@ -145,8 +181,8 @@ pub async fn run(cmd: Commands) -> Result<()> {
                 println!("vault '{vault_name}' has no variables");
             } else {
                 println!("vault: {vault_name}");
-                for (key, value) in vars {
-                    println!("  {key}={value}");
+                for var in vars {
+                    println!("  {}={}", var.key, var.value);
                 }
             }
         }
@@ -167,8 +203,8 @@ pub async fn run(cmd: Commands) -> Result<()> {
                 vault
             };
             let vars = db::export_vars(&pool, &vault_names).await?;
-            for (key, value) in vars {
-                println!("export {}={}", key, shell_quote(&value));
+            for var in vars {
+                println!("export {}={}", var.key, shell_quote(&var.value));
             }
         }
 
@@ -179,8 +215,8 @@ pub async fn run(cmd: Commands) -> Result<()> {
             let content = fs::read_to_string(&file)?;
             let pairs = parse_env(&content);
             let mut count = 0;
-            for (key, value) in &pairs {
-                db::set_var(&pool, vault_id, key, value).await?;
+            for var in &pairs {
+                db::set_var(&pool, vault_id, &var.key, &var.value).await?;
                 count += 1;
             }
             println!("imported {count} variables into vault '{vault_name}' from {file}");
@@ -198,7 +234,7 @@ pub async fn run(cmd: Commands) -> Result<()> {
 
             let status = Command::new(&cmd[0])
                 .args(&cmd[1..])
-                .envs(vars)
+                .envs(vars.into_iter().map(|v| (v.key, v.value)))
                 .status()?;
 
             std::process::exit(status.code().unwrap_or(1));
