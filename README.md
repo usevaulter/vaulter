@@ -4,50 +4,13 @@ A fast, local-first environment variable manager for developers.
 
 Vaulter organizes env variables into **vaults** — named groups you can switch between per project directory. No more juggling `.env` files or leaking secrets across projects.
 
-
-## Roadmap
-
-### Core
-- [x] `vaulter init` — auto-initialize on first use
-- [x] `vaulter create / list / delete` — vault management
-- [x] `vaulter use` — switch active vault per directory
-- [x] `vaulter set / get / unset` — variable CRUD
-- [x] `vaulter set KEY=val KEY2=val2` — multi-set support
-- [x] `vaulter show` — display vault variables
-- [x] `vaulter import` — import from `.env` files
-- [x] `vaulter export` — export as shell statements
-- [x] `vaulter switch` — switch vault and export for shell eval
-- [x] `vaulter with` — run commands with vault env injected
-
-### Phase 1 — Versioning
-- [ ] `vaulter log` — history of changes per vault
-- [ ] `vaulter diff` — diff between vaults or versions
-- [ ] `vaulter rollback` — restore a previous state
-- [ ] Snapshot tagging
-- [ ] Autocompletion
-
-### Phase 2 — Clone, Merge & Multi-format
-- [ ] `vaulter clone <source> <dest>` — duplicate a vault
-- [ ] `vaulter merge <source> --into <dest>` — merge with conflict detection
-- [ ] `vaulter rename <old> <new>`
-- [ ] `vaulter export --format json/toml/yaml`
-
-### Phase 3 — Encryption
-- [ ] `vaulter set KEY --secret` — prompt without echo
-- [ ] AES-256-GCM encryption at rest
-- [ ] Master password with argon2 key derivation
-
-### Phase 4 — Remote Sync
-- [ ] `vaulter login` — authenticate
-- [ ] Turso-backed remote sync across machines
-- [ ] Team-shared vaults
-- [ ] End-to-end encrypted sync
-
-### Phase 5 — TUI
-- [ ] Interactive terminal UI (ratatui)
-- [ ] Browse, edit, and switch vaults visually
-
 ## Installation
+
+### One-liner
+
+```bash
+curl -sL https://raw.githubusercontent.com/usevaulter/vaulter/main/install-remote.sh | bash
+```
 
 ### From source
 
@@ -57,11 +20,6 @@ cd vaulter
 ./install.sh
 ```
 
-### One-liner
-
-```bash
-curl -sL https://raw.githubusercontent.com/usevaulter/vaulter/main/install-remote.sh | bash
-```
 
 ## Quick Start
 
@@ -94,15 +52,28 @@ vaulter create staging
 # List all vaults (* marks active for current directory)
 vaulter list
 
-# Switch active vault for current directory
+# Set the active vault for current directory (DB only, shell env unchanged)
 vaulter use staging
 
-# Switch and export variables for your shell
+# Set active vault AND load its variables into the current shell
 eval "$(vaulter switch staging)"
 
 # Delete a vault
 vaulter delete staging
 ```
+
+#### `use` vs `switch`
+
+Both commands set the active vault for the current directory, but they differ in what they do to your shell:
+
+| | `vaulter use <vault>` | `vaulter switch <vault>` |
+|---|---|---|
+| Updates active vault (per-directory) in DB | yes | yes |
+| Prints `export KEY=value` statements | no | yes |
+| Needs `eval "$(...)"` wrapper | no | yes |
+| Current shell env is updated | no | yes (via eval) |
+
+Use `use` when you just want to record the mapping (e.g. the shell hook will pick it up on the next `cd`). Use `switch` (with `eval`) when you want your current shell to immediately see the vault's variables without changing directory.
 
 ### Variables
 
@@ -211,6 +182,19 @@ add-zsh-hook chpwd _vaulter_chpwd
 _vaulter_chpwd
 ```
 
+## Command Aliases
+
+Several commands have shorter aliases for convenience:
+
+| Command | Alias | Example |
+|---|---|---|
+| `list` | `ls` | `vaulter ls` |
+| `delete` | `rm` | `vaulter rm staging` |
+| `show` | `print` | `vaulter print` |
+| `use` | `select` | `vaulter select staging` |
+| `switch` | `sw` | `eval "$(vaulter sw staging)"` |
+| `debug` | `info` | `vaulter info` |
+
 ## Environment Variables
 
 | Variable | Description |
@@ -220,6 +204,48 @@ _vaulter_chpwd
 ## Data Storage
 
 All data is stored locally in a SQLite database at `~/.vaulter/vaulter.db` (or `$VAULTER_HOME/vaulter.db`). Values are stored in plaintext. The database is auto-initialized on first use. Schema migrations are handled automatically via sqlx.
+
+## Roadmap
+
+### Core
+- [x] `vaulter init` — auto-initialize on first use
+- [x] `vaulter create / list / delete` — vault management
+- [x] `vaulter use` — switch active vault per directory
+- [x] `vaulter set / get / unset` — variable CRUD
+- [x] `vaulter set KEY=val KEY2=val2` — multi-set support
+- [x] `vaulter show` — display vault variables
+- [x] `vaulter import` — import from `.env` files
+- [x] `vaulter export` — export as shell statements
+- [x] `vaulter switch` — switch vault and export for shell eval
+- [x] `vaulter with` — run commands with vault env injected
+
+### Phase 1 — Versioning
+- [ ] `vaulter log` — history of changes per vault
+- [ ] `vaulter diff` — diff between vaults or versions
+- [ ] `vaulter rollback` — restore a previous state
+- [ ] Snapshot tagging
+- [ ] Autocompletion
+
+### Phase 2 — Clone, Merge & Multi-format
+- [ ] `vaulter clone <source> <dest>` — duplicate a vault
+- [ ] `vaulter merge <source> --into <dest>` — merge with conflict detection
+- [ ] `vaulter rename <old> <new>`
+- [ ] `vaulter export --format json/toml/yaml`
+
+### Phase 3 — Encryption
+- [ ] `vaulter set KEY --secret` — prompt without echo
+- [ ] AES-256-GCM encryption at rest
+- [ ] Master password with argon2 key derivation
+
+### Phase 4 — Remote Sync
+- [ ] `vaulter login` — authenticate
+- [ ] Turso-backed remote sync across machines
+- [ ] Team-shared vaults
+- [ ] End-to-end encrypted sync
+
+### Phase 5 — TUI
+- [ ] Interactive terminal UI (ratatui)
+- [ ] Browse, edit, and switch vaults visually
 
 ## Contributing
 You are welcome !

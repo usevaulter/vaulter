@@ -13,21 +13,26 @@ pub enum Commands {
     Init,
 
     /// Show debug information about vaulter installation
+    #[command(visible_alias = "info")]
     Debug,
 
     /// Create a new vault
     Create { name: String },
 
     /// List all vaults
+    #[command(visible_alias = "ls")]
     List,
 
     /// Delete a vault
+    #[command(visible_alias = "rm")]
     Delete { name: String },
 
     /// Switch active vault for current directory
+    #[command(visible_alias = "select")]
     Use { vault: String },
 
     /// Switch vault and export its env variables for current shell (use with eval)
+    #[command(visible_alias = "sw")]
     Switch {
         /// Vault name (defaults to active vault)
         name: Option<String>,
@@ -49,6 +54,7 @@ pub enum Commands {
     },
 
     /// Show all variables in a vault
+    #[command(visible_alias = "print")]
     Show {
         /// Vault name (defaults to active vault)
         vault: Option<String>,
