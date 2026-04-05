@@ -222,11 +222,19 @@ pub async fn run(cmd: Commands) -> Result<()> {
             println!("imported {count} variables into vault '{vault_name}' from {file}");
         }
 
-        Commands::With { vault, cmd } => {
+        Commands::Run { args, cmd } => {
             if cmd.is_empty() {
-                eprintln!("usage: vaulter with [vault] -- <command>");
+                eprintln!("usage: vaulter run [with <vault>] -- <command>");
                 std::process::exit(1);
             }
+            let vault = match args.as_slice() {
+                [] => None,
+                [keyword, name] if keyword == "with" => Some(name.clone()),
+                _ => {
+                    eprintln!("usage: vaulter run [with <vault>] -- <command>");
+                    std::process::exit(1);
+                }
+            };
             let pool = db::open_db().await?;
             let vault_name = resolve_vault(&vault, &pool).await?;
             let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;

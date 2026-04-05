@@ -82,9 +82,12 @@ pub enum Commands {
     },
 
     /// Run a command with a vault's env variables
-    With {
-        /// Vault name (defaults to active vault)
-        vault: Option<String>,
+    ///
+    /// Uses active vault by default. To target a specific vault without
+    /// switching, use: `vaulter run with <vault> -- <command>`
+    Run {
+        /// Optional "with <vault>" prefix to target a specific vault
+        args: Vec<String>,
         #[arg(last = true)]
         cmd: Vec<String>,
     },

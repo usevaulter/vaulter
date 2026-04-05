@@ -37,8 +37,11 @@ vaulter set DB_HOST=localhost DB_PORT=5432
 # Import from an existing .env file
 vaulter import .env
 
-# Run your app with the vault's variables
-vaulter with myproject -- npm start
+# Run your app with the active vault's variables
+vaulter run -- npm start
+
+# Or target a specific vault without switching
+vaulter run with myproject -- npm start
 ```
 
 ## Commands
@@ -134,12 +137,12 @@ eval "$(vaulter export)"
 ### Run Commands
 
 ```bash
-# Run a command with a vault's variables injected
-vaulter with staging -- npm start
-vaulter with production -- docker compose up
+# Run a command with the active vault's variables injected
+vaulter run -- python app.py
 
-# Use the active vault
-vaulter with -- python app.py
+# Target a specific vault without switching the active one
+vaulter run with staging -- npm start
+vaulter run with production -- docker compose up
 ```
 
 The child process inherits your current environment plus the vault's variables. Vaulter exits with the child's exit code.
@@ -217,7 +220,7 @@ All data is stored locally in a SQLite database at `~/.vaulter/vaulter.db` (or `
 - [x] `vaulter import` — import from `.env` files
 - [x] `vaulter export` — export as shell statements
 - [x] `vaulter switch` — switch vault and export for shell eval
-- [x] `vaulter with` — run commands with vault env injected
+- [x] `vaulter run` — run commands with vault env injected (`run with <vault>` to target a specific vault)
 
 ### Phase 1 — Versioning
 - [ ] `vaulter log` — history of changes per vault
