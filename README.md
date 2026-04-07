@@ -185,6 +185,40 @@ add-zsh-hook chpwd _vaulter_chpwd
 _vaulter_chpwd
 ```
 
+## Shell Completion
+
+Vaulter ships with shell completion including **dynamic value completion** (vault names, env keys).
+
+### Zsh (recommended)
+
+```bash
+# Install
+mkdir -p ~/.zfunc
+vaulter completions zsh > ~/.zfunc/_vaulter
+
+# Add to ~/.zshrc (if not already present)
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+Then `vaulter use <TAB>` completes with your vault names, `vaulter get <TAB>` completes with keys in the active vault, etc.
+
+### Bash
+
+```bash
+vaulter completions bash > /usr/local/etc/bash_completion.d/vaulter
+# or source it directly from ~/.bashrc:
+#   source <(vaulter completions bash)
+```
+
+### Fish
+
+```bash
+vaulter completions fish > ~/.config/fish/completions/vaulter.fish
+```
+
+Note: dynamic completion (live vault/key names) is currently zsh-only. Bash and fish get static command/flag completion.
+
 ## Command Aliases
 
 Several commands have shorter aliases for convenience:
@@ -227,7 +261,7 @@ All data is stored locally in a SQLite database at `~/.vaulter/vaulter.db` (or `
 - [ ] `vaulter diff` — diff between vaults or versions
 - [ ] `vaulter rollback` — restore a previous state
 - [ ] Snapshot tagging
-- [ ] Autocompletion
+- [x] Autocompletion (zsh with dynamic values; bash/fish static)
 
 ### Phase 2 — Clone, Merge & Multi-format
 - [ ] `vaulter clone <source> <dest>` — duplicate a vault

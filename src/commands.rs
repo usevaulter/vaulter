@@ -1,11 +1,17 @@
 use std::env;
 use std::fs;
+use std::io;
 use std::process::Command;
 
-use crate::cli::Commands;
+use clap::CommandFactory;
+use clap_complete::{Shell, generate};
+
+use crate::cli::{Cli, Commands};
 use crate::db;
 use crate::errors::Result;
 use crate::models::EnvVar;
+
+const ZSH_COMPLETION: &str = include_str!("../completions/vaulter.zsh");
 
 fn current_dir() -> Result<String> {
     env::current_dir()
@@ -57,6 +63,35 @@ pub fn parse_env(content: &str) -> Vec<EnvVar> {
             EnvVar::new(k.trim(), v.trim().trim_matches('"').trim_matches('\''))
         })
         .collect()
+}
+
+async fn internal_complete(kind: &str, vault: Option<&str>) -> Result<()> {
+    match kind {
+        "vaults" => {
+            let pool = db::open_db().await?;
+            for (name, _) in db::list_vaults(&pool).await? {
+                println!("{name}");
+            }
+        }
+        "vars" => {
+            let pool = db::open_db().await?;
+            let vault_name = match vault {
+                Some(v) => v.to_string(),
+                None => db::get_active_vault(&pool, &current_dir()?).await?,
+            };
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            for var in db::list_vars(&pool, vault_id).await? {
+                println!("{}", var.key);
+            }
+        }
+        "shells" => {
+            for s in ["zsh", "bash", "fish", "powershell", "elvish"] {
+                println!("{s}");
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn shell_quote(value: &str) -> String {
@@ -220,6 +255,21 @@ pub async fn run(cmd: Commands) -> Result<()> {
                 count += 1;
             }
             println!("imported {count} variables into vault '{vault_name}' from {file}");
+        }
+
+        Commands::Completions { shell } => {
+            if matches!(shell, Shell::Zsh) {
+                print!("{}", ZSH_COMPLETION);
+            } else {
+                let mut cmd = Cli::command();
+                let name = cmd.get_name().to_string();
+                generate(shell, &mut cmd, name, &mut io::stdout());
+            }
+        }
+
+        Commands::InternalComplete { kind, vault } => {
+            // Silent on any failure — completion must never spam the shell.
+            let _ = internal_complete(&kind, vault.as_deref()).await;
         }
 
         Commands::Run { args, cmd } => {

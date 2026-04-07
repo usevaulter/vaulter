@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(name = "vaulter", version, about = "Environment variable manager")]
@@ -77,6 +78,21 @@ pub enum Commands {
     Import {
         /// Path to the .env file
         file: String,
+        #[arg(long)]
+        vault: Option<String>,
+    },
+
+    /// Print a shell completion script to stdout
+    ///
+    /// Example: `vaulter completions zsh > ~/.zfunc/_vaulter`
+    Completions { shell: Shell },
+
+    /// Internal: emit values for shell completion (one per line)
+    #[command(name = "_complete", hide = true)]
+    InternalComplete {
+        /// What to complete: "vaults", "vars", or "shells"
+        kind: String,
+        /// Vault name (for kind="vars"); defaults to active vault
         #[arg(long)]
         vault: Option<String>,
     },

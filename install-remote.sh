@@ -131,3 +131,57 @@ if ! grep -q "vaulter shell integration" "${RC_FILE}" 2>/dev/null; then
 else
   echo "Shell hook already present in ${RC_FILE}"
 fi
+
+# Ask about shell completions
+prompt_yn() {
+  local question="$1" answer=""
+  if [ -r /dev/tty ]; then
+    printf "%s [Y/n] " "${question}" > /dev/tty
+    read -r answer < /dev/tty
+  fi
+  answer="${answer:-y}"
+  [[ "${answer}" =~ ^[Yy]$ ]]
+}
+
+install_completions() {
+  case "${SHELL_NAME}" in
+    zsh)
+      mkdir -p "${HOME}/.zfunc"
+      "${INSTALL_DIR}/vaulter" completions zsh > "${HOME}/.zfunc/_vaulter"
+      if ! grep -q "vaulter completions" "${HOME}/.zshrc" 2>/dev/null; then
+        cat >> "${HOME}/.zshrc" <<'EOF'
+
+# vaulter completions
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+EOF
+        echo "Zsh completions installed to ~/.zfunc/_vaulter (added fpath to ~/.zshrc)"
+      else
+        echo "Zsh completions installed to ~/.zfunc/_vaulter"
+      fi
+      ;;
+    bash)
+      if ! grep -q "vaulter completions" "${HOME}/.bashrc" 2>/dev/null; then
+        cat >> "${HOME}/.bashrc" <<'EOF'
+
+# vaulter completions
+source <(vaulter completions bash)
+EOF
+        echo "Bash completions added to ~/.bashrc"
+      else
+        echo "Bash completions already sourced from ~/.bashrc"
+      fi
+      ;;
+    fish)
+      mkdir -p "${HOME}/.config/fish/completions"
+      "${INSTALL_DIR}/vaulter" completions fish > "${HOME}/.config/fish/completions/vaulter.fish"
+      echo "Fish completions installed to ~/.config/fish/completions/vaulter.fish"
+      ;;
+  esac
+}
+
+if prompt_yn "Install shell completions for ${SHELL_NAME}?"; then
+  install_completions
+else
+  echo "Skipped completions. Install later with: vaulter completions ${SHELL_NAME}"
+fi
