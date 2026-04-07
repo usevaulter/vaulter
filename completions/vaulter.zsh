@@ -11,10 +11,10 @@ _vaulter() {
     case $state in
         args)
             case $words[1] in
-                use|select|delete|rm)
+                switch|sw|delete|rm)
                     _arguments '1:vault:_vaulter_vaults'
                     ;;
-                show|print|switch|sw)
+                show|print|use|select)
                     _arguments '1:vault:_vaulter_vaults'
                     ;;
                 get|unset)
@@ -52,10 +52,10 @@ _vaulter_commands() {
         'ls:List all vaults (alias)'
         'delete:Delete a vault'
         'rm:Delete a vault (alias)'
-        'use:Switch active vault for current directory'
-        'select:Switch active vault (alias for use)'
-        'switch:Switch vault and export for shell eval'
-        'sw:Switch vault (alias)'
+        'use:Export a vault'\''s variables (no DB change)'
+        'select:Export a vault'\''s variables (alias for use)'
+        'switch:Switch to a vault (DB + export)'
+        'sw:Switch to a vault (alias for switch)'
         'set:Set environment variables'
         'get:Get a variable value'
         'show:Show all variables in a vault'

@@ -165,11 +165,14 @@ pub async fn run(cmd: Commands) -> Result<()> {
             println!("vault '{name}' deleted");
         }
 
-        Commands::Use { vault } => {
+        Commands::Use { name } => {
             let pool = db::open_db().await?;
-            let dir = current_dir()?;
-            db::set_active_vault(&pool, &dir, &vault).await?;
-            println!("switched to vault '{vault}' for {dir}");
+            let vault_name = resolve_vault(&name, &pool).await?;
+            let vault_id = db::resolve_vault_id(&pool, &vault_name).await?;
+            let vars = db::list_vars(&pool, vault_id).await?;
+            for var in vars {
+                println!("export {}={}", var.key, shell_quote(&var.value));
+            }
         }
 
         Commands::Switch { name } => {

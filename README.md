@@ -27,8 +27,8 @@ cd vaulter
 # Create a vault
 vaulter create myproject
 
-# Switch to it (remembered per directory)
-vaulter use myproject
+# Switch to it (remembered per directory + loads env)
+eval "$(vaulter switch myproject)"
 
 # Set variables
 vaulter set API_KEY sk-123
@@ -55,10 +55,10 @@ vaulter create staging
 # List all vaults (* marks active for current directory)
 vaulter list
 
-# Set the active vault for current directory (DB only, shell env unchanged)
-vaulter use staging
+# Load a vault's variables into the current shell (no DB change)
+eval "$(vaulter use staging)"
 
-# Set active vault AND load its variables into the current shell
+# Switch to a vault — set as active in DB and load its variables
 eval "$(vaulter switch staging)"
 
 # Delete a vault
@@ -67,16 +67,15 @@ vaulter delete staging
 
 #### `use` vs `switch`
 
-Both commands set the active vault for the current directory, but they differ in what they do to your shell:
+Both commands export a vault's variables, but differ in persistence:
 
 | | `vaulter use <vault>` | `vaulter switch <vault>` |
 |---|---|---|
-| Updates active vault (per-directory) in DB | yes | yes |
-| Prints `export KEY=value` statements | no | yes |
-| Needs `eval "$(...)"` wrapper | no | yes |
-| Current shell env is updated | no | yes (via eval) |
+| Prints `export KEY=value` statements | yes | yes |
+| Updates active vault (per-directory) in DB | no | yes |
+| Needs `eval "$(...)"` wrapper | yes | yes |
 
-Use `use` when you just want to record the mapping (e.g. the shell hook will pick it up on the next `cd`). Use `switch` (with `eval`) when you want your current shell to immediately see the vault's variables without changing directory.
+Use `use` when you want a one-off env load without changing which vault is active. Use `switch` when you want to change the active vault for this directory and load its variables.
 
 ### Variables
 
@@ -153,10 +152,10 @@ Vaulter remembers which vault is active **per directory**. This means:
 
 ```bash
 cd ~/projects/frontend
-vaulter use frontend-dev    # remembered for this directory
+vaulter switch frontend-dev  # remembered for this directory
 
 cd ~/projects/api
-vaulter use api-staging     # different vault for this directory
+vaulter switch api-staging   # different vault for this directory
 
 cd ~/projects/frontend
 vaulter show                # automatically uses frontend-dev
@@ -172,7 +171,7 @@ autoload -U add-zsh-hook
 vaulter() {
   case "$1" in
     use|switch)
-      command vaulter "$@" && eval "$(command vaulter export)"
+      eval "$(command vaulter "$@")"
       ;;
     *)
       command vaulter "$@"
@@ -228,7 +227,7 @@ Several commands have shorter aliases for convenience:
 | `list` | `ls` | `vaulter ls` |
 | `delete` | `rm` | `vaulter rm staging` |
 | `show` | `print` | `vaulter print` |
-| `use` | `select` | `vaulter select staging` |
+| `use` | `select` | `eval "$(vaulter select staging)"` |
 | `switch` | `sw` | `eval "$(vaulter sw staging)"` |
 | `debug` | `info` | `vaulter info` |
 
@@ -247,13 +246,13 @@ All data is stored locally in a SQLite database at `~/.vaulter/vaulter.db` (or `
 ### Core
 - [x] `vaulter init` — auto-initialize on first use
 - [x] `vaulter create / list / delete` — vault management
-- [x] `vaulter use` — switch active vault per directory
+- [x] `vaulter use` — export a vault's variables (no DB change)
 - [x] `vaulter set / get / unset` — variable CRUD
 - [x] `vaulter set KEY=val KEY2=val2` — multi-set support
 - [x] `vaulter show` — display vault variables
 - [x] `vaulter import` — import from `.env` files
 - [x] `vaulter export` — export as shell statements
-- [x] `vaulter switch` — switch vault and export for shell eval
+- [x] `vaulter switch` — set active vault in DB and export variables
 - [x] `vaulter run` — run commands with vault env injected (`run with <vault>` to target a specific vault)
 
 ### Phase 1 — Versioning

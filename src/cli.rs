@@ -28,11 +28,18 @@ pub enum Commands {
     #[command(visible_alias = "rm")]
     Delete { name: String },
 
-    /// Switch active vault for current directory
+    /// Use a vault — export its variables for the current shell (no DB change)
+    ///
+    /// Load into your shell with: `eval "$(vaulter use staging)"`
     #[command(visible_alias = "select")]
-    Use { vault: String },
+    Use {
+        /// Vault name (defaults to active vault)
+        name: Option<String>,
+    },
 
-    /// Switch vault and export its env variables for current shell (use with eval)
+    /// Switch to a vault — set it as active in DB and export its variables
+    ///
+    /// Load into your shell with: `eval "$(vaulter switch staging)"`
     #[command(visible_alias = "sw")]
     Switch {
         /// Vault name (defaults to active vault)

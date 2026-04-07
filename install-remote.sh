@@ -56,7 +56,7 @@ autoload -U add-zsh-hook
 vaulter() {
   case "$1" in
     use|switch)
-      command vaulter "$@" && eval "$(command vaulter export)"
+      eval "$(command vaulter "$@")"
       ;;
     *)
       command vaulter "$@"
@@ -73,7 +73,7 @@ BASH_HOOK='
 vaulter() {
   case "$1" in
     use|switch)
-      command vaulter "$@" && eval "$(command vaulter export)"
+      eval "$(command vaulter "$@")"
       ;;
     *)
       command vaulter "$@"
@@ -94,7 +94,7 @@ FISH_HOOK='
 function vaulter
   switch $argv[1]
     case use switch
-      command vaulter $argv; and eval (command vaulter export 2>/dev/null)
+      eval (command vaulter $argv)
     case "*"
       command vaulter $argv
   end
