@@ -28,7 +28,7 @@ cd vaulter
 vaulter create myproject
 
 # Switch to it (remembered per directory + loads env)
-eval "$(vaulter switch myproject)"
+vaulter switch myproject
 
 # Set variables
 vaulter set API_KEY sk-123
@@ -44,6 +44,8 @@ vaulter run -- npm start
 vaulter run with myproject -- npm start
 ```
 
+> **Note:** The examples above assume you have [shell integration](#shell-integration) configured (recommended). Without it, `use` and `switch` must be wrapped: `eval "$(vaulter switch myproject)"`.
+
 ## Commands
 
 ### Vaults
@@ -56,14 +58,16 @@ vaulter create staging
 vaulter list
 
 # Load a vault's variables into the current shell (no DB change)
-eval "$(vaulter use staging)"
+vaulter use staging
 
 # Switch to a vault — set as active in DB and load its variables
-eval "$(vaulter switch staging)"
+vaulter switch staging
 
 # Delete a vault
 vaulter delete staging
 ```
+
+> Without [shell integration](#shell-integration): `eval "$(vaulter use staging)"` / `eval "$(vaulter switch staging)"`.
 
 #### `use` vs `switch`
 
@@ -163,7 +167,7 @@ vaulter show                # automatically uses frontend-dev
 
 ## Shell Integration
 
-Add to your `~/.zshrc` to auto-load env vars when changing directories:
+Add to your `~/.zshrc` once. This wraps `vaulter` so that `use` and `switch` automatically load variables into your shell — no `eval "$(...)"` needed. It also auto-loads the active vault's variables whenever you `cd` into a directory.
 
 ```bash
 autoload -U add-zsh-hook
@@ -227,8 +231,8 @@ Several commands have shorter aliases for convenience:
 | `list` | `ls` | `vaulter ls` |
 | `delete` | `rm` | `vaulter rm staging` |
 | `show` | `print` | `vaulter print` |
-| `use` | `select` | `eval "$(vaulter select staging)"` |
-| `switch` | `sw` | `eval "$(vaulter sw staging)"` |
+| `use` | `select` | `vaulter select staging` |
+| `switch` | `sw` | `vaulter sw staging` |
 | `debug` | `info` | `vaulter info` |
 
 ## Environment Variables
